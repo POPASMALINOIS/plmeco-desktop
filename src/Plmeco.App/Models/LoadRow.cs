@@ -1,19 +1,43 @@
 using System;
+using System.ComponentModel;
 
 namespace Plmeco.App.Models;
 
-public class LoadRow
+public class LoadRow : INotifyPropertyChanged
 {
-    public int Id { get; set; }
-    public string Transportista { get; set; } = "";
-    public string Matricula { get; set; } = "";
-    public string Destino { get; set; } = "";
-    public string Muelle { get; set; } = "";
-    public string Estado { get; set; } = "";
-    public TimeSpan? LlegadaReal { get; set; }
-    public TimeSpan? SalidaReal { get; set; }
-    public TimeSpan? SalidaTope { get; set; }
-    public bool Lex { get; set; }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private int _id;
+    public int Id { get => _id; set { _id = value; OnPropertyChanged(nameof(Id)); } }
+
+    private string _transportista = "";
+    public string Transportista { get => _transportista; set { _transportista = value; OnPropertyChanged(nameof(Transportista)); } }
+
+    private string _matricula = "";
+    public string Matricula { get => _matricula; set { _matricula = value; OnPropertyChanged(nameof(Matricula)); } }
+
+    private string _destino = "";
+    public string Destino { get => _destino; set { _destino = value; OnPropertyChanged(nameof(Destino)); } }
+
+    private string _muelle = "";
+    public string Muelle { get => _muelle; set { _muelle = value; OnPropertyChanged(nameof(Muelle)); } }
+
+    private string _estado = "";
+    public string Estado { get => _estado; set { _estado = value; OnPropertyChanged(nameof(Estado)); OnPropertyChanged(nameof(Incidencias)); } }
+
+    private TimeSpan? _llegadaReal;
+    public TimeSpan? LlegadaReal { get => _llegadaReal; set { _llegadaReal = value; OnPropertyChanged(nameof(LlegadaReal)); OnPropertyChanged(nameof(Incidencias)); } }
+
+    private TimeSpan? _salidaReal;
+    public TimeSpan? SalidaReal { get => _salidaReal; set { _salidaReal = value; OnPropertyChanged(nameof(SalidaReal)); OnPropertyChanged(nameof(Incidencias)); } }
+
+    private TimeSpan? _salidaTope;
+    public TimeSpan? SalidaTope { get => _salidaTope; set { _salidaTope = value; OnPropertyChanged(nameof(SalidaTope)); OnPropertyChanged(nameof(Incidencias)); } }
+
+    private bool _lex;
+    public bool Lex { get => _lex; set { _lex = value; OnPropertyChanged(nameof(Lex)); } }
+
     public string Incidencias =>
         (SalidaReal.HasValue && SalidaTope.HasValue && SalidaReal > SalidaTope)
         ? "RETRASO TRANSPORTISTA" : string.Empty;
