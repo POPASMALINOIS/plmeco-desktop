@@ -1,0 +1,47 @@
+name: Build PLMECO App
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Cache NuGet
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore
+      run: dotnet restore src/Plmeco.App
+
+    - name: Build (Release)
+      run: dotnet build src/Plmeco.App -c Release --no-restore
+
+    - name: Publish (win-x64)
+      run: dotnet publish src/Plmeco.App -c Release -r win-x64 --self-contained false -o out
+
+    - name: Zip artifacts
+      run: |
+        powershell Compress-Archive -Path out\* -DestinationPath Plmeco.App-win-x64.zip
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Plmeco.App-win-x64
+        path: Plmeco.App-win-x64.zip
+        if-no-files-found: error
