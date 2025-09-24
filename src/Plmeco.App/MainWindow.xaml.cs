@@ -21,12 +21,25 @@ namespace Plmeco.App
 
         private void Importar_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Filter = "Excel Files|*.xlsx;*.xls" };
-            if (dlg.ShowDialog() == true)
+            try
             {
-                var data = ImportService.ImportExcel(dlg.FileName);
-                Rows.Clear();
-                foreach (var row in data) Rows.Add(row);
+                var dlg = new OpenFileDialog
+                {
+                    Filter = "Excel Files|*.xlsx;*.xls|All files|*.*",
+                    Title = "Selecciona el fichero de reunión"
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    var data = ImportService.ImportExcel(dlg.FileName);
+                    Rows.Clear();
+                    foreach (var row in data) Rows.Add(row);
+                    dgCargas.Items.Refresh();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("No se pudo importar el archivo:\n" + ex.Message,
+                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -37,7 +50,9 @@ namespace Plmeco.App
                 if (dgCargas.CurrentItem is not LoadRow row) return;
                 if (dgCargas.CurrentColumn is not DataGridColumn col) return;
 
-                var header = col.Header?.ToString() ?? "";
+                var header = col.Header?.ToString() ?? string.Empty;
+
+                // Solo actuamos en las columnas de hora (que en XAML están IsReadOnly)
                 if (header.Equals("LLEGADA REAL", StringComparison.OrdinalIgnoreCase))
                 {
                     row.LlegadaReal = DateTime.Now.TimeOfDay;
@@ -48,15 +63,17 @@ namespace Plmeco.App
                 }
                 else
                 {
-                    return; // doble clic en otra columna: no hacemos nada
+                    return; // doble clic en otra columna: no hacer nada
                 }
 
+                // Refrescar UI sin entrar en modo edición
                 dgCargas.CommitEdit(DataGridEditingUnit.Cell, true);
                 dgCargas.Items.Refresh();
+                e.Handled = true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al establecer la hora: " + ex.Message,
+                MessageBox.Show("Error al establecer la hora:\n" + ex.Message,
                                 "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
