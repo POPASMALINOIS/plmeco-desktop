@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Win32;
 using Plmeco.App.Models;
 using Plmeco.App.Services;
@@ -9,7 +11,7 @@ namespace Plmeco.App
 {
     public partial class MainWindow : Window
     {
-        public ObservableCollection<LoadRow> Rows { get; set; } = new();
+        public ObservableCollection<LoadRow> Rows { get; } = new();
 
         public MainWindow()
         {
@@ -28,14 +30,34 @@ namespace Plmeco.App
             }
         }
 
-        private void DataGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (dgCargas.CurrentItem is LoadRow row)
+            try
             {
-                var col = dgCargas.CurrentColumn.Header.ToString();
-                if (col == "LLEGADA REAL") row.LlegadaReal = DateTime.Now.TimeOfDay;
-                if (col == "SALIDA REAL") row.SalidaReal = DateTime.Now.TimeOfDay;
+                if (dgCargas.CurrentItem is not LoadRow row) return;
+                if (dgCargas.CurrentColumn is not DataGridColumn col) return;
+
+                var header = col.Header?.ToString() ?? "";
+                if (header.Equals("LLEGADA REAL", StringComparison.OrdinalIgnoreCase))
+                {
+                    row.LlegadaReal = DateTime.Now.TimeOfDay;
+                }
+                else if (header.Equals("SALIDA REAL", StringComparison.OrdinalIgnoreCase))
+                {
+                    row.SalidaReal = DateTime.Now.TimeOfDay;
+                }
+                else
+                {
+                    return; // doble clic en otra columna: no hacemos nada
+                }
+
+                dgCargas.CommitEdit(DataGridEditingUnit.Cell, true);
                 dgCargas.Items.Refresh();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al establecer la hora: " + ex.Message,
+                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
