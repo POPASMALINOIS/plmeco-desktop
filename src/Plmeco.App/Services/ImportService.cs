@@ -8,14 +8,15 @@ namespace Plmeco.App.Services;
 
 public static class ImportService
 {
+    // Sinónimos de encabezados (normalizados)
     private static readonly Dictionary<string,string[]> Syns = new()
     {
         ["TRANSPORTISTA"] = new[] {"TRANSPORTISTA","TRANSPORTE","CARRIER","TRANSPORTER"},
         ["MATRICULA"]     = new[] {"MATRICULA","MATRÍCULA","PLACA","MATRIC","REG","REGISTRO"},
         ["MUELLE"]        = new[] {"MUELLE","MUEL.","DOCK"},
         ["ESTADO"]        = new[] {"ESTADO","STATUS","EST."},
-        ["DESTINO"]       = new[] {"DESTINO","DEST.","DESTINATION"},
-        ["SALIDA TOPE"]   = new[] {"SALIDA TOPE","TOPE SALIDA","SALIDA_TOPE","SALIDA TOPE"} // ojo espacios raros
+        ["DESTINO"]       = new[] {"DESTINO","DEST.","DESTINATION","DESTINO FINAL"},
+        ["SALIDA TOPE"]   = new[] {"SALIDA TOPE","TOPE SALIDA","SALIDA_TOPE","TOPE"}
     };
 
     public static List<LoadRow> ImportExcel(string path)
@@ -26,7 +27,7 @@ public static class ImportService
         var lastRow = ws.LastRowUsed().RowNumber();
         var lastCol = ws.LastColumnUsed().ColumnNumber();
 
-        // 1) Detectar fila de encabezados: buscamos la que más sinónimos contiene en las primeras 100 filas
+        // 1) Detectar la fila de encabezados: escanear primeras 100 filas y elegir la que más encaje
         int headerRow = 1, bestHits = -1;
         Dictionary<string,int> colMap = new();
 
@@ -37,14 +38,14 @@ public static class ImportService
 
             for (int c = 1; c <= lastCol; c++)
             {
-                var val = (ws.Cell(r, c).GetString() ?? "").Trim();
-                if (string.IsNullOrEmpty(val)) continue;
-                var norm = Normalize(val);
+                var raw = ws.Cell(r, c).GetString();
+                if (string.IsNullOrWhiteSpace(raw)) continue;
 
+                var val = Normalize(raw);
                 foreach (var kv in Syns)
                 {
                     if (temp.ContainsKey(kv.Key)) continue;
-                    if (kv.Value.Any(s => Normalize(s) == norm))
+                    if (kv.Value.Select(Normalize).Contains(val))
                     {
                         temp[kv.Key] = c;
                         hits++;
@@ -60,46 +61,73 @@ public static class ImportService
             }
         }
 
-        // 2) Funciones auxiliares
-        string GetCell(int row, string key)
-            => colMap.TryGetValue(key, out var c) ? ws.Cell(row, c).GetString() : "";
-
-        TimeSpan? ParseTime(string s)
+        // 2) Auxiliares de lectura
+        string GetText(int row, string key)
         {
+            if (!colMap.TryGetValue(key, out var c)) return "";
+            return ws.Cell(row, c).GetString();
+        }
+
+        TimeSpan? GetTime(int row, string key)
+        {
+            if (!colMap.TryGetValue(key, out var c)) return null;
+            var cell = ws.Cell(row, c);
+            // a) si es numérico (estilo Excel: días), convertir a TimeSpan
+            if (cell.DataType == XLDataType.Number)
+            {
+                var d = cell.GetDouble();          // p.ej. 0.3125 = 07:30
+                var ts = TimeSpan.FromDays(d);
+                // normalizar a 24h
+                return new TimeSpan(ts.Hours, ts.Minutes, 0);
+            }
+            // b) si es fecha/hora
+            if (cell.DataType == XLDataType.DateTime)
+            {
+                var dt = cell.GetDateTime();
+                return new TimeSpan(dt.Hour, dt.Minute, 0);
+            }
+            // c) si es texto, intentar parsear
+            var s = cell.GetString();
             if (string.IsNullOrWhiteSpace(s)) return null;
-            if (TimeSpan.TryParse(s, out var t)) return t;
-            if (double.TryParse(s, out var d)) return TimeSpan.FromDays(d); // si viene como número Excel
+            if (TimeSpan.TryParse(s, out var t1)) return new TimeSpan(t1.Hours, t1.Minutes, 0);
+
+            // d) formatos raros: "730", "7.30", "7,30"
+            var cleaned = s.Replace(".", ":").Replace(",", ":");
+            if (cleaned.Length == 3 || cleaned.Length == 4) // "730" o "0730"
+            {
+                cleaned = cleaned.PadLeft(4, '0');
+                cleaned = cleaned.Insert(2, ":"); // "07:30"
+            }
+            if (TimeSpan.TryParse(cleaned, out var t2)) return new TimeSpan(t2.Hours, t2.Minutes, 0);
+
             return null;
         }
 
-        // 3) Leer filas de datos
+        // 3) Leer datos
         var list = new List<LoadRow>();
         for (int r = headerRow + 1; r <= lastRow; r++)
         {
-            // Si la fila está completamente vacía, saltamos
-            bool vacia = true;
+            bool empty = true;
             for (int c = 1; c <= lastCol; c++)
-                if (!string.IsNullOrWhiteSpace(ws.Cell(r, c).GetString())) { vacia = false; break; }
-            if (vacia) continue;
+                if (!string.IsNullOrWhiteSpace(ws.Cell(r, c).GetString())) { empty = false; break; }
+            if (empty) continue;
 
             list.Add(new LoadRow
             {
-                Transportista = GetCell(r, "TRANSPORTISTA"),
-                Matricula     = GetCell(r, "MATRICULA"),
-                Destino       = GetCell(r, "DESTINO"),
-                Muelle        = GetCell(r, "MUELLE"),
-                Estado        = GetCell(r, "ESTADO"),
-                SalidaTope    = ParseTime(GetCell(r, "SALIDA TOPE"))
+                Transportista = GetText(r, "TRANSPORTISTA"),
+                Matricula     = GetText(r, "MATRICULA"),
+                Destino       = GetText(r, "DESTINO"),
+                Muelle        = GetText(r, "MUELLE"),
+                Estado        = GetText(r, "ESTADO"),
+                SalidaTope    = GetTime(r, "SALIDA TOPE")   // <-- ahora sí
             });
         }
 
-        // 4) Orden por muelle
         return list.OrderBy(x => x.Muelle).ToList();
     }
 
     private static string Normalize(string s) =>
-        s.ToUpperInvariant()
-         .Replace("Á","A").Replace("É","E").Replace("Í","I")
-         .Replace("Ó","O").Replace("Ú","U").Replace("Ü","U")
-         .Replace("Ñ","N").Trim();
+        (s ?? string.Empty).Trim().ToUpperInvariant()
+          .Replace("Á","A").Replace("É","E").Replace("Í","I")
+          .Replace("Ó","O").Replace("Ú","U").Replace("Ü","U").Replace("Ñ","N");
 }
