@@ -4,12 +4,93 @@
         xmlns:conv="clr-namespace:Plmeco.App.Converters"
         Title="PLMECO Transporte"
         Height="600"
-        Width="900">
+        Width="1000">
 
-    <!-- Recursos: convertidor de TimeSpan -->
+    <!-- Recursos: convertidor y colores -->
     <Window.Resources>
         <conv:TimeSpanConverter x:Key="TsConv"/>
+
+        <!-- Paleta suave -->
+        <SolidColorBrush x:Key="RowGreen"   Color="#DFF6DD"/>  <!-- verde suave -->
+        <SolidColorBrush x:Key="RowRed"     Color="#F8D7DA"/>  <!-- rojo suave -->
+        <SolidColorBrush x:Key="CellGreen"  Color="#D4EDDA"/>  <!-- celda verde -->
+        <SolidColorBrush x:Key="CellOrange" Color="#FFE5B4"/>  <!-- naranja claro -->
+        <SolidColorBrush x:Key="TextDarkRed" Color="#7A0010"/>
+
+        <!-- Estilo para la FILA completa (LEX / CAMION ANULADO) -->
+        <Style x:Key="CargasRowStyle" TargetType="DataGridRow">
+            <!-- Por defecto sin color -->
+            <Setter Property="Background" Value="{x:Null}"/>
+            <Setter Property="Foreground" Value="{x:Null}"/>
+            <Style.Triggers>
+                <!-- LEX marcado: fila verde -->
+                <DataTrigger Binding="{Binding Lex}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource RowGreen}"/>
+                </DataTrigger>
+
+                <!-- CAMION ANULADO: fila roja (tiene prioridad al ir después) -->
+                <DataTrigger Binding="{Binding Estado}" Value="CAMION ANULADO">
+                    <Setter Property="Background" Value="{StaticResource RowRed}"/>
+                    <Setter Property="Foreground" Value="{StaticResource TextDarkRed}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Estilo celda DESTINO: verde cuando ESTADO = OK -->
+        <Style x:Key="DestinoCellStyle" TargetType="DataGridCell">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Estado}" Value="OK">
+                    <Setter Property="Background" Value="{StaticResource CellGreen}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Estilo celda ESTADO: naranja cuando CARGANDO -->
+        <Style x:Key="EstadoCellStyle" TargetType="DataGridCell">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Estado}" Value="CARGANDO">
+                    <Setter Property="Background" Value="{StaticResource CellOrange}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Estilo celda INCIDENCIAS: naranja cuando hay texto (retraso) -->
+        <Style x:Key="IncidenciasCellStyle" TargetType="DataGridCell">
+            <Style.Triggers>
+                <!-- Si Incidencias no está vacío, colorear -->
+                <DataTrigger Binding="{Binding Incidencias}" Value="">
+                    <Setter Property="Background" Value="{x:Null}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Incidencias}">
+                    <DataTrigger.Value>
+                        <x:Null/>
+                    </DataTrigger.Value>
+                    <Setter Property="Background" Value="{x:Null}"/>
+                </DataTrigger>
+                <!-- Cualquier otro valor = hay incidencia -->
+                <Trigger Property="ContentPresenter.Content" Value="{x:Null}">
+                    <!-- sin estilos extra -->
+                </Trigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Incidencias}" Value=""/>
+                    </MultiDataTrigger.Conditions>
+                    <!-- sin color si vacío -->
+                </MultiDataTrigger>
+                <!-- Colo naranja si NO vacío -->
+                <DataTrigger Binding="{Binding Incidencias}" Value="{x:Static sys:String.Empty}">
+                    <!-- Esta línea requiere xmlns:sys; lo añadimos abajo -->
+                    <Setter Property="Background" Value="{x:Null}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
+
+    <!-- Necesario para sys:String arriba (de lo contrario ignorado) -->
+    <Window xmlns:sys="clr-namespace:System;assembly=mscorlib"/>
 
     <!-- Atajos -->
     <Window.InputBindings>
@@ -34,28 +115,36 @@
             <Button DockPanel.Dock="Top" Content="Importar Excel" Click="Importar_Click" Margin="5"/>
 
             <!-- Tabla -->
-            <DataGrid x:Name="dgCargas" AutoGenerateColumns="False" CanUserAddRows="False"
-                      MouseDoubleClick="DataGrid_MouseDoubleClick">
+            <DataGrid x:Name="dgCargas"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      MouseDoubleClick="DataGrid_MouseDoubleClick"
+                      RowStyle="{StaticResource CargasRowStyle}">
+
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="MATRICULA" Binding="{Binding Matricula}" Width="*"/>
-                    <DataGridTextColumn Header="DESTINO" Binding="{Binding Destino}" Width="*"/>
-                    <DataGridTextColumn Header="MUELLE" Binding="{Binding Muelle}" Width="0.5*"/>
-                    <DataGridTextColumn Header="ESTADO" Binding="{Binding Estado}" Width="0.5*"/>
+                    <DataGridTextColumn Header="DESTINO" Binding="{Binding Destino}" Width="*"
+                                        CellStyle="{StaticResource DestinoCellStyle}"/>
+                    <DataGridTextColumn Header="MUELLE" Binding="{Binding Muelle}" Width="0.6*"/>
+                    <DataGridTextColumn Header="ESTADO" Binding="{Binding Estado}" Width="0.6*"
+                                        CellStyle="{StaticResource EstadoCellStyle}"/>
 
                     <!-- Horas: llegada/salida editables -->
                     <DataGridTextColumn Header="LLEGADA REAL"
                         Binding="{Binding LlegadaReal, Converter={StaticResource TsConv}, UpdateSourceTrigger=LostFocus}"
-                        Width="0.6*"/>
+                        Width="0.8*"/>
                     <DataGridTextColumn Header="SALIDA REAL"
                         Binding="{Binding SalidaReal, Converter={StaticResource TsConv}, UpdateSourceTrigger=LostFocus}"
-                        Width="0.6*"/>
+                        Width="0.8*"/>
 
-                    <!-- Tope: solo lectura -->
+                    <!-- Tope: solo lectura (viene de Excel) -->
                     <DataGridTextColumn Header="SALIDA TOPE"
                         Binding="{Binding SalidaTope, Converter={StaticResource TsConv}}"
-                        IsReadOnly="True" Width="0.6*"/>
+                        IsReadOnly="True" Width="0.8*"/>
 
-                    <DataGridTextColumn Header="INCIDENCIAS" Binding="{Binding Incidencias}" Width="*"/>
+                    <DataGridTextColumn Header="INCIDENCIAS" Binding="{Binding Incidencias}" Width="*"
+                                        CellStyle="{StaticResource IncidenciasCellStyle}"/>
+
                     <DataGridCheckBoxColumn Header="LEX" Binding="{Binding Lex}" Width="0.5*"/>
                 </DataGrid.Columns>
             </DataGrid>
