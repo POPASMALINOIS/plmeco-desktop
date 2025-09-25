@@ -55,7 +55,7 @@ namespace Plmeco.App.Services
                 if (!string.IsNullOrWhiteSpace(x.Estado) &&
                     x.Estado.Equals("CARGANDO", System.StringComparison.OrdinalIgnoreCase))
                 {
-                    ws.Cell(r, 4).Style.Fill.BackgroundColor = XLColor.LightOrange; // <- correcto
+                    ws.Cell(r, 4).Style.Fill.BackgroundColor = XLColor.Orange;   // <- naranja seguro
                     ws.Cell(r, 4).Style.Font.Bold = true;
                 }
 
@@ -68,7 +68,7 @@ namespace Plmeco.App.Services
                     ws.Row(r).Style.Font.Bold = true;
                 }
 
-                // Fila verde si LEX (si coincide con ANULADO, prevalece el bloque anterior)
+                // Fila verde si LEX (si coincide con ANULADO, prevalece el rojo anterior)
                 if (x.Lex)
                 {
                     ws.Row(r).Style.Fill.BackgroundColor = XLColor.LightGreen;
@@ -77,7 +77,7 @@ namespace Plmeco.App.Services
                 // INCIDENCIAS naranja si NO vacío
                 if (!string.IsNullOrWhiteSpace(x.Incidencias))
                 {
-                    ws.Cell(r, 8).Style.Fill.BackgroundColor = XLColor.LightOrange; // <- correcto
+                    ws.Cell(r, 8).Style.Fill.BackgroundColor = XLColor.Orange;  // <- naranja seguro
                     ws.Cell(r, 8).Style.Font.Bold = true;
                 }
 
