@@ -20,9 +20,19 @@
         <SolidColorBrush x:Key="CellOrange" Color="#FFE5B4"/>
         <SolidColorBrush x:Key="TextDarkRed" Color="#7A0010"/>
 
-        <!-- Texto negro por defecto -->
+        <!-- Texto negro por defecto (contenido de celdas) -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="Black"/>
+        </Style>
+
+        <!-- 🔒 Texto negro también cuando la celda está seleccionada -->
+        <Style TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="Black"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="Black"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Fila: LEX => verde; CAMION ANULADO => rojo -->
@@ -47,7 +57,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- DESTINO verde si ESTADO = OK -->
+        <!-- DESTINO verde si ESTADO = OK (case-insensitive) -->
         <Style x:Key="DestinoCellStyle" TargetType="DataGridCell">
             <Style.Triggers>
                 <DataTrigger Value="True">
@@ -60,7 +70,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- ESTADO naranja si CARGANDO -->
+        <!-- ESTADO naranja si CARGANDO (case-insensitive) -->
         <Style x:Key="EstadoCellStyle" TargetType="DataGridCell">
             <Style.Triggers>
                 <DataTrigger Value="True">
@@ -125,7 +135,7 @@
                     <DataGridTextColumn Header="ESTADO"    Binding="{Binding Estado}"   Width="0.6*"
                                         CellStyle="{StaticResource EstadoCellStyle}"/>
 
-                    <!-- Horas -->
+                    <!-- Horas (editables) -->
                     <DataGridTextColumn Header="LLEGADA REAL"
                         Binding="{Binding LlegadaReal, Converter={StaticResource TsConv}, UpdateSourceTrigger=LostFocus}"
                         Width="0.8*"/>
