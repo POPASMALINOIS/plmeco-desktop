@@ -33,7 +33,7 @@ namespace Plmeco.App.Services
                 ws.Cell(r, 3).Value = x.Muelle;
                 ws.Cell(r, 4).Value = x.Estado;
 
-                // Horas: guardamos como texto hh:mm (simple y robusto)
+                // Horas como texto hh:mm (simple y robusto)
                 ws.Cell(r, 5).Value = x.LlegadaReal.HasValue ? x.LlegadaReal.Value.ToString(@"hh\:mm") : "";
                 ws.Cell(r, 6).Value = x.SalidaReal.HasValue  ? x.SalidaReal.Value.ToString(@"hh\:mm")  : "";
                 ws.Cell(r, 7).Value = x.SalidaTope.HasValue  ? x.SalidaTope.Value.ToString(@"hh\:mm")  : "";
@@ -41,7 +41,7 @@ namespace Plmeco.App.Services
                 ws.Cell(r, 8).Value = x.Incidencias;
                 ws.Cell(r, 9).Value = x.Lex ? "✔" : "";
 
-                // ==== Colores (mismos criterios que la app) ====
+                // ===== Colores (mismos criterios que la app) =====
 
                 // DESTINO verde si ESTADO = OK (case-insensitive)
                 if (!string.IsNullOrWhiteSpace(x.Estado) &&
@@ -55,7 +55,7 @@ namespace Plmeco.App.Services
                 if (!string.IsNullOrWhiteSpace(x.Estado) &&
                     x.Estado.Equals("CARGANDO", System.StringComparison.OrdinalIgnoreCase))
                 {
-                    ws.Cell(r, 4).Style.Fill.BackgroundColor = XLColor.LightOrange; // <— CORRECTO
+                    ws.Cell(r, 4).Style.Fill.BackgroundColor = XLColor.LightOrange; // <- correcto
                     ws.Cell(r, 4).Style.Font.Bold = true;
                 }
 
@@ -68,7 +68,7 @@ namespace Plmeco.App.Services
                     ws.Row(r).Style.Font.Bold = true;
                 }
 
-                // Fila verde si LEX (si coincide con ANULADO, arriba ya lo pintamos en rojo)
+                // Fila verde si LEX (si coincide con ANULADO, prevalece el bloque anterior)
                 if (x.Lex)
                 {
                     ws.Row(r).Style.Fill.BackgroundColor = XLColor.LightGreen;
@@ -77,7 +77,7 @@ namespace Plmeco.App.Services
                 // INCIDENCIAS naranja si NO vacío
                 if (!string.IsNullOrWhiteSpace(x.Incidencias))
                 {
-                    ws.Cell(r, 8).Style.Fill.BackgroundColor = XLColor.LightOrange; // <— CORRECTO
+                    ws.Cell(r, 8).Style.Fill.BackgroundColor = XLColor.LightOrange; // <- correcto
                     ws.Cell(r, 8).Style.Font.Bold = true;
                 }
 
