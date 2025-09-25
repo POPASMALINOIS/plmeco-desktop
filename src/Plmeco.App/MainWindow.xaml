@@ -11,52 +11,36 @@
         <conv:TimeSpanConverter x:Key="TsConv"/>
     </Window.Resources>
 
-    <!-- Atajos de teclado -->
+    <!-- Atajos -->
     <Window.InputBindings>
-        <KeyBinding Key="S" Modifiers="Control"
-                    Command="{x:Static ApplicationCommands.Save}"/>
-        <KeyBinding Key="S" Modifiers="Control+Shift"
-                    Command="{x:Static ApplicationCommands.SaveAs}"/>
+        <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}"/>
+        <KeyBinding Key="S" Modifiers="Control+Shift" Command="{x:Static ApplicationCommands.SaveAs}"/>
     </Window.InputBindings>
 
     <Grid>
         <DockPanel>
 
-            <!-- MENÚ ARCHIVO -->
+            <!-- MENÚ -->
             <Menu DockPanel.Dock="Top">
                 <MenuItem Header="_Archivo">
-                    <MenuItem Header="_Guardar"
-                              Click="Guardar_Click"
-                              InputGestureText="Ctrl+S"/>
-                    <MenuItem Header="Guardar _como..."
-                              Click="GuardarComo_Click"
-                              InputGestureText="Ctrl+Shift+S"/>
+                    <MenuItem Header="_Guardar" Click="Guardar_Click" InputGestureText="Ctrl+S"/>
+                    <MenuItem Header="Guardar _como..." Click="GuardarComo_Click" InputGestureText="Ctrl+Shift+S"/>
                     <Separator/>
                     <MenuItem Header="_Salir" Click="Salir_Click"/>
                 </MenuItem>
             </Menu>
 
-            <!-- Botón importar -->
-            <Button DockPanel.Dock="Top"
-                    Content="Importar Excel"
-                    Click="Importar_Click"
-                    Margin="5"/>
+            <!-- Importar -->
+            <Button DockPanel.Dock="Top" Content="Importar Excel" Click="Importar_Click" Margin="5"/>
 
-            <!-- Tabla principal -->
-            <DataGrid x:Name="dgCargas"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
+            <!-- Tabla -->
+            <DataGrid x:Name="dgCargas" AutoGenerateColumns="False" CanUserAddRows="False"
                       MouseDoubleClick="DataGrid_MouseDoubleClick">
-
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="MATRICULA"
-                                        Binding="{Binding Matricula}" Width="*"/>
-                    <DataGridTextColumn Header="DESTINO"
-                                        Binding="{Binding Destino}" Width="*"/>
-                    <DataGridTextColumn Header="MUELLE"
-                                        Binding="{Binding Muelle}" Width="0.5*"/>
-                    <DataGridTextColumn Header="ESTADO"
-                                        Binding="{Binding Estado}" Width="0.5*"/>
+                    <DataGridTextColumn Header="MATRICULA" Binding="{Binding Matricula}" Width="*"/>
+                    <DataGridTextColumn Header="DESTINO" Binding="{Binding Destino}" Width="*"/>
+                    <DataGridTextColumn Header="MUELLE" Binding="{Binding Muelle}" Width="0.5*"/>
+                    <DataGridTextColumn Header="ESTADO" Binding="{Binding Estado}" Width="0.5*"/>
 
                     <!-- Horas: llegada/salida editables -->
                     <DataGridTextColumn Header="LLEGADA REAL"
@@ -65,16 +49,14 @@
                     <DataGridTextColumn Header="SALIDA REAL"
                         Binding="{Binding SalidaReal, Converter={StaticResource TsConv}, UpdateSourceTrigger=LostFocus}"
                         Width="0.6*"/>
-                    
-                    <!-- Salida Tope: solo lectura -->
+
+                    <!-- Tope: solo lectura -->
                     <DataGridTextColumn Header="SALIDA TOPE"
                         Binding="{Binding SalidaTope, Converter={StaticResource TsConv}}"
                         IsReadOnly="True" Width="0.6*"/>
 
-                    <DataGridTextColumn Header="INCIDENCIAS"
-                                        Binding="{Binding Incidencias}" Width="*"/>
-                    <DataGridCheckBoxColumn Header="LEX"
-                                            Binding="{Binding Lex}" Width="0.5*"/>
+                    <DataGridTextColumn Header="INCIDENCIAS" Binding="{Binding Incidencias}" Width="*"/>
+                    <DataGridCheckBoxColumn Header="LEX" Binding="{Binding Lex}" Width="0.5*"/>
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
