@@ -15,45 +15,36 @@ namespace Plmeco.App
     public partial class MainWindow : Window
     {
         public ObservableCollection<LoadRow> Rows { get; } = new();
-        private string? _currentFilePath; // última ruta de guardado
+        private string? _currentFilePath;
 
         public MainWindow()
         {
             InitializeComponent();
             dgCargas.ItemsSource = Rows;
 
-            // Enlazar comandos a los atajos (Ctrl+S, Ctrl+Shift+S)
-            CommandBindings.Add(new CommandBinding(
-                ApplicationCommands.Save, (s, e) => Guardar(forcePickPath: false)));
-            CommandBindings.Add(new CommandBinding(
-                ApplicationCommands.SaveAs, (s, e) => Guardar(forcePickPath: true)));
+            CommandBindings.Add(new CommandBinding(ApplicationCommands.Save, (s,e)=>Guardar(false)));
+            CommandBindings.Add(new CommandBinding(ApplicationCommands.SaveAs, (s,e)=>Guardar(true)));
         }
 
         private void Importar_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var dlg = new OpenFileDialog
-                {
-                    Filter = "Excel Files|*.xlsx;*.xls|All files|*.*",
-                    Title = "Selecciona el fichero de reunión"
-                };
+                var dlg = new OpenFileDialog { Filter = "Excel Files|*.xlsx;*.xls|All files|*.*", Title = "Selecciona el fichero de reunión" };
                 if (dlg.ShowDialog() == true)
                 {
                     var data = ImportService.ImportExcel(dlg.FileName);
                     Rows.Clear();
                     foreach (var row in data) Rows.Add(row);
-                    dgCargas.Items.Refresh();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("No se pudo importar el archivo:\n" + ex.Message,
-                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("No se pudo importar el archivo:\n" + ex.Message, "PLMECO",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        // Doble clic para marcar horas en columnas de tiempo (solo lectura en XAML)
         private void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             try
@@ -61,33 +52,28 @@ namespace Plmeco.App
                 if (dgCargas.CurrentItem is not LoadRow row) return;
                 if (dgCargas.CurrentColumn is not DataGridColumn col) return;
 
-                var header = col.Header?.ToString() ?? string.Empty;
-
-                if (header.Equals("LLEGADA REAL", StringComparison.OrdinalIgnoreCase))
-                {
-                    row.LlegadaReal = DateTime.Now.TimeOfDay;
-                }
-                else if (header.Equals("SALIDA REAL", StringComparison.OrdinalIgnoreCase))
-                {
-                    row.SalidaReal = DateTime.Now.TimeOfDay;
-                }
-                else
-                {
-                    return;
-                }
-
+                // Finalizar edición antes de tocar datos
                 dgCargas.CommitEdit(DataGridEditingUnit.Cell, true);
-                dgCargas.Items.Refresh();
-                e.Handled = true;
+                dgCargas.CommitEdit(DataGridEditingUnit.Row,  true);
+                dgCargas.CancelEdit();
+
+                var header = col.Header?.ToString() ?? string.Empty;
+                if (header.Equals("LLEGADA REAL", StringComparison.OrdinalIgnoreCase))
+                    row.LlegadaReal = DateTime.Now.TimeOfDay;
+                else if (header.Equals("SALIDA REAL", StringComparison.OrdinalIgnoreCase))
+                    row.SalidaReal = DateTime.Now.TimeOfDay;
+                else
+                    return;
+
+                e.Handled = true; // sin Items.Refresh()
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al establecer la hora:\n" + ex.Message,
-                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Error al establecer la hora:\n" + ex.Message, "PLMECO",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        // ====== Menú Archivo ======
         private void Guardar_Click(object sender, RoutedEventArgs e) => Guardar(false);
         private void GuardarComo_Click(object sender, RoutedEventArgs e) => Guardar(true);
         private void Salir_Click(object sender, RoutedEventArgs e) => Close();
@@ -109,18 +95,16 @@ namespace Plmeco.App
                 }
 
                 var ext = Path.GetExtension(_currentFilePath!).ToLowerInvariant();
-                if (ext == ".csv")
-                    ExportToCsv(_currentFilePath!);
-                else
-                    ExportToXlsx(_currentFilePath!); // por defecto .xlsx
+                if (ext == ".csv") ExportToCsv(_currentFilePath!);
+                else               ExportToXlsx(_currentFilePath!);
 
-                MessageBox.Show($"Guardado correctamente en:\n{_currentFilePath}",
-                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Guardado correctamente en:\n{_currentFilePath}", "PLMECO",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("No se pudo guardar:\n" + ex.Message,
-                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("No se pudo guardar:\n" + ex.Message, "PLMECO",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -129,42 +113,23 @@ namespace Plmeco.App
             using var wb = new XLWorkbook();
             var ws = wb.Worksheets.Add("Cargas");
 
-            // Encabezados
-            var headers = new[]
-            {
-                "MATRICULA","DESTINO","MUELLE","ESTADO",
-                "LLEGADA REAL","SALIDA REAL","SALIDA TOPE","INCIDENCIAS","LEX"
-            };
-            for (int c = 0; c < headers.Length; c++)
-                ws.Cell(1, c + 1).Value = headers[c];
+            var headers = new[] { "MATRICULA","DESTINO","MUELLE","ESTADO","LLEGADA REAL","SALIDA REAL","SALIDA TOPE","INCIDENCIAS","LEX" };
+            for (int c = 0; c < headers.Length; c++) ws.Cell(1, c + 1).Value = headers[c];
 
-            // Filas
             int r = 2;
             foreach (var x in Rows)
             {
-                ws.Cell(r, 1).Value = x.Matricula;
-                ws.Cell(r, 2).Value = x.Destino;
-                ws.Cell(r, 3).Value = x.Muelle;
-                ws.Cell(r, 4).Value = x.Estado;
+                ws.Cell(r,1).Value = x.Matricula;
+                ws.Cell(r,2).Value = x.Destino;
+                ws.Cell(r,3).Value = x.Muelle;
+                ws.Cell(r,4).Value = x.Estado;
 
-                if (x.LlegadaReal.HasValue)
-                {
-                    ws.Cell(r, 5).Value = DateTime.Today + x.LlegadaReal.Value;
-                    ws.Cell(r, 5).Style.DateFormat.Format = "hh:mm";
-                }
-                if (x.SalidaReal.HasValue)
-                {
-                    ws.Cell(r, 6).Value = DateTime.Today + x.SalidaReal.Value;
-                    ws.Cell(r, 6).Style.DateFormat.Format = "hh:mm";
-                }
-                if (x.SalidaTope.HasValue)
-                {
-                    ws.Cell(r, 7).Value = DateTime.Today + x.SalidaTope.Value;
-                    ws.Cell(r, 7).Style.DateFormat.Format = "hh:mm";
-                }
+                if (x.LlegadaReal.HasValue) { ws.Cell(r,5).Value = DateTime.Today + x.LlegadaReal.Value; ws.Cell(r,5).Style.DateFormat.Format = "hh:mm"; }
+                if (x.SalidaReal.HasValue)  { ws.Cell(r,6).Value = DateTime.Today + x.SalidaReal.Value;  ws.Cell(r,6).Style.DateFormat.Format = "hh:mm"; }
+                if (x.SalidaTope.HasValue)  { ws.Cell(r,7).Value = DateTime.Today + x.SalidaTope.Value;  ws.Cell(r,7).Style.DateFormat.Format = "hh:mm"; }
 
-                ws.Cell(r, 8).Value = x.Incidencias;
-                ws.Cell(r, 9).Value = x.Lex ? "TRUE" : "FALSE";
+                ws.Cell(r,8).Value = x.Incidencias;
+                ws.Cell(r,9).Value = x.Lex ? "TRUE" : "FALSE";
                 r++;
             }
 
@@ -190,8 +155,7 @@ namespace Plmeco.App
                   .Append('"').Append(Fmt(x.SalidaReal)).Append('"').Append(';')
                   .Append('"').Append(Fmt(x.SalidaTope)).Append('"').Append(';')
                   .Append('"').Append(Esc(x.Incidencias)).Append('"').Append(';')
-                  .Append(x.Lex ? "TRUE" : "FALSE")
-                  .AppendLine();
+                  .Append(x.Lex ? "TRUE" : "FALSE").AppendLine();
             }
 
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
