@@ -67,7 +67,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- DESTINO verde si ESTADO = OK (case-insensitive) -->
+        <!-- DESTINO verde si ESTADO = OK -->
         <Style x:Key="DestinoCellStyle" TargetType="DataGridCell">
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -81,7 +81,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- ESTADO naranja si CARGANDO (case-insensitive) -->
+        <!-- ESTADO naranja si CARGANDO -->
         <Style x:Key="EstadoCellStyle" TargetType="DataGridCell">
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -166,7 +166,7 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <!-- ESTADO: plantilla con TextBlock y edición con ComboBox (editable) -->
+                    <!-- ESTADO: desplegable editable -->
                     <DataGridTemplateColumn Header="ESTADO" CellStyle="{StaticResource EstadoCellStyle}" Width="0.8*">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -183,6 +183,13 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
+
+                    <!-- NUEVA columna: PRECINTO (editable) -->
+                    <DataGridTextColumn Header="PRECINTO" Binding="{Binding Precinto}" Width="0.8*">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Horas (editables con convertidor) -->
                     <DataGridTextColumn Header="LLEGADA REAL"
