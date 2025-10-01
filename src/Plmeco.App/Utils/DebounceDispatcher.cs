@@ -3,7 +3,7 @@ using System.Windows.Threading;
 
 namespace Plmeco.App.Utils
 {
-    // Llama a la acción solo una vez tras un periodo sin nuevos eventos
+    // Ejecuta la acción una única vez tras un periodo sin nuevos eventos.
     public class DebounceDispatcher
     {
         private DispatcherTimer? _timer;
@@ -11,12 +11,21 @@ namespace Plmeco.App.Utils
         public void Debounce(TimeSpan delay, Action action)
         {
             _timer?.Stop();
-            _timer = new DispatcherTimer { Interval = delay, Priority = DispatcherPriority.Background };
-            _timer.Tick += (s, e) =>
+
+            // En WPF se usa el constructor con prioridad (no existe propiedad Priority)
+            _timer = new DispatcherTimer(DispatcherPriority.Background)
             {
-                _timer?.Stop();
+                Interval = delay
+            };
+
+            EventHandler? handler = null;
+            handler = (s, e) =>
+            {
+                _timer!.Stop();
+                _timer.Tick -= handler!;
                 action();
             };
+            _timer.Tick += handler;
             _timer.Start();
         }
     }
