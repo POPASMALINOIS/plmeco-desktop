@@ -21,6 +21,11 @@
         </StackPanel>
 
         <!-- ===== Control de pestañas ===== -->
+        <TabControl x:Name="TabControlDocs"
+            ItemsSource="{Binding Documents}"
+            SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}">
+    …
+        </TabControl>
         <TabControl x:Name="MainTabControl">
             <TabItem Header="Hoja 1">
                 <Grid>
