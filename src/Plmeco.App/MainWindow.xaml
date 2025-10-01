@@ -11,15 +11,15 @@
         <!-- Barra superior de botones -->
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="5">
             <Button Content="Nueva pestaña desde Excel…" Margin="2"
-                    Click="NewTabFromExcel_Click"/>
+                    Click="NuevaPestanaDesdeExcel_Click"/>
             <Button Content="Importar en pestaña actual…" Margin="2"
-                    Click="ImportIntoCurrentTab_Click"/>
+                    Click="ImportarEnActual_Click"/>
             <Button Content="Guardar (pestaña)" Margin="2"
-                    Click="SaveTab_Click"/>
+                    Click="Guardar_Click"/>
             <Button Content="Guardar como… (pestaña)" Margin="2"
-                    Click="SaveTabAs_Click"/>
+                    Click="GuardarComo_Click"/>
             <Button Content="Cerrar pestaña" Margin="2"
-                    Click="CloseTab_Click"/>
+                    Click="CerrarPestanaActual_Click"/>
         </StackPanel>
 
         <!-- Control de pestañas dinámicas -->
@@ -46,8 +46,9 @@
                               AlternatingRowBackground="#F5F5F5"
                               SelectionUnit="Cell"
                               FontSize="13"
-                              FontWeight="Normal">
-                        
+                              FontWeight="Normal"
+                              SelectionMode="Extended">
+
                         <!-- ESTADO -->
                         <DataGridTemplateColumn Header="Estado" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
