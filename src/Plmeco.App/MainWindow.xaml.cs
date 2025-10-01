@@ -1,171 +1,128 @@
+using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
-using Microsoft.Win32;
-using Plmeco.App.Models;
-using Plmeco.App.Services;
-using Plmeco.App.Utils;
+using PLMECO.App.Models;
+using PLMECO.App.Services;
 
-namespace Plmeco.App
+namespace PLMECO.App
 {
-    public partial class MainWindow : Window, INotifyPropertyChanged
+    public partial class MainWindow : Window
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
-        private void OnPropertyChanged(string n) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
-
-        public ObservableCollection<DocumentView> Documents { get; } = new();
-        private int _selectedIndex;
-        public int SelectedIndex { get => _selectedIndex; set { _selectedIndex = value; OnPropertyChanged(nameof(SelectedIndex)); DebouncedAutosave(); } }
-        private DocumentView? Current => (SelectedIndex >= 0 && SelectedIndex < Documents.Count) ? Documents[SelectedIndex] : null;
-
-        private readonly DebounceDispatcher _debouncer = new();
-        private bool _loadingSnapshot;
+        public ObservableCollection<DocumentView> Documents { get; set; } = new ObservableCollection<DocumentView>();
+        private bool _loadingSnapshot = false;
 
         public MainWindow()
         {
             InitializeComponent();
             DataContext = this;
 
-            // RESTAURAR
-            var snap = PersistenceService.Load();
-            _loadingSnapshot = true;
-            try
-            {
-                if (snap.Documents.Count == 0)
-                {
-                    var doc = new DocumentView { Title = "Reunión 1" };
-                    Documents.Add(doc);
-                }
-                else
-                {
-                    // ✅ foreach sobre la colección correcta
-                    foreach (var d in snap.Documents)
-                    {
-                        var doc = new DocumentView { Title = d.Title, CurrentFile = d.CurrentFile };
-                        foreach (var row in d.Rows) doc.Rows.Add(row);
-                        HookRows(doc);
-                        Documents.Add(doc);
-                    }
-                    SelectedIndex = Math.Min(Math.Max(0, snap.SelectedIndex), Documents.Count - 1);
-                }
-            }
-            finally { _loadingSnapshot = false; }
-
-            foreach (var d in Documents) HookRows(d);
-            Documents.CollectionChanged += Documents_CollectionChanged;
-
-            SafeAutosaveNow();
+            // Crear pestaña vacía inicial
+            var doc = new DocumentView { Title = "Hoja 1" };
+            Documents.Add(doc);
+            HookRows(doc);
         }
 
-        // ===== hooks cambios =====
-        private void HookRows(DocumentView doc)
+        // === PROPIEDADES DE AYUDA ===
+        public int SelectedIndex
         {
-            doc.Rows.CollectionChanged -= Rows_CollectionChanged;
-            doc.Rows.CollectionChanged += Rows_CollectionChanged;
-            foreach (var r in doc.Rows)
-            {
-                r.PropertyChanged -= RowOnPropertyChanged;
-                r.PropertyChanged += RowOnPropertyChanged;
-            }
-        }
-        private void RowOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (_loadingSnapshot) return;
-            DebouncedAutosave();
-        }
-        private void Rows_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (_loadingSnapshot) return;
-            if (e.NewItems != null)
-                foreach (var it in e.NewItems.OfType<LoadRow>())
-                {
-                    it.PropertyChanged -= RowOnPropertyChanged;
-                    it.PropertyChanged += RowOnPropertyChanged;
-                }
-            DebouncedAutosave();
-        }
-        private void Documents_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (_loadingSnapshot) return;
-            DebouncedAutosave();
+            get => TabControlDocs.SelectedIndex;
+            set => TabControlDocs.SelectedIndex = value;
         }
 
-        private void DebouncedAutosave() => _debouncer.Debounce(TimeSpan.FromSeconds(2), SafeAutosaveNow);
+        public DocumentView Current => (DocumentView)TabControlDocs.SelectedItem;
 
-        private void SafeAutosaveNow()
-        {
-            try
-            {
-                var docs = new List<PersistenceService.DocumentSnapshot>();
-                foreach (var d in Documents)
-                {
-                    docs.Add(new PersistenceService.DocumentSnapshot
-                    {
-                        Title = d.Title,
-                        CurrentFile = d.CurrentFile,
-                        Rows = d.Rows.ToList()
-                    });
-                }
-                // ✅ pasar también SelectedIndex
-                PersistenceService.Save(docs, SelectedIndex);
-            }
-            catch { }
-        }
-
-        // ===== importar / pestañas / guardar (igual que envío anterior) =====
+        // === IMPORTAR EN PESTAÑA ACTUAL ===
         private void ImportarEnActual_Click(object sender, RoutedEventArgs e)
         {
-            if (Current is null) return;
+            if (Current == null) return;
             try
             {
-                var dlg = new OpenFileDialog { Filter = "Excel Files|*.xlsx;*.xls|All files|*.*", Title = "Selecciona el fichero de reunión" };
+                var dlg = new OpenFileDialog
+                {
+                    Filter = "Excel Files|*.xlsx;*.xls|All files|*.*",
+                    Title = "Selecciona el fichero de reunión"
+                };
+
                 if (dlg.ShowDialog() == true)
                 {
-                    var data = ImportService.ImportExcel(dlg.FileName);
+                    var res = ImportService.ImportExcel(dlg.FileName);
+
+                    if (res.Rows.Count == 0)
+                    {
+                        MessageBox.Show(
+                            "No se han encontrado filas importables.\n\n" +
+                            "Cabeceras mínimas: MATRICULA, DESTINO, MUELLE, ESTADO.\n" +
+                            "Comprueba también que no haya filas 'LADO/SECCIÓN/CARGA' antes de la fila de títulos.",
+                            "PLMECO", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
                     _loadingSnapshot = true;
                     try
                     {
                         Current.Rows.Clear();
-                        foreach (var r in data) Current.Rows.Add(r);
-                        Current.Title = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
+                        foreach (var r in res.Rows) Current.Rows.Add(r);
+                        Current.Title = res.SheetName;     // nombre real de la hoja
                         Current.CurrentFile = null;
+                        HookRows(Current);
                     }
                     finally { _loadingSnapshot = false; }
+
                     SafeAutosaveNow();
+
+                    MessageBox.Show($"Importado desde hoja \"{res.SheetName}\" (fila cabecera {res.HeaderRow}).\n" +
+                                    $"Filas: {res.Rows.Count}.",
+                                    "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("No se pudo importar:\n" + ex.Message, "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("No se pudo importar:\n" + ex.Message, "PLMECO",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
+        // === IMPORTAR EN NUEVA PESTAÑA ===
         private void NuevaPestanaDesdeExcel_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var dlg = new OpenFileDialog { Filter = "Excel Files|*.xlsx;*.xls|All files|*.*", Title = "Selecciona el fichero de reunión" };
+                var dlg = new OpenFileDialog
+                {
+                    Filter = "Excel Files|*.xlsx;*.xls|All files|*.*",
+                    Title = "Selecciona el fichero de reunión"
+                };
+
                 if (dlg.ShowDialog() == true)
                 {
-                    var data = ImportService.ImportExcel(dlg.FileName);
-                    var title = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
+                    var res = ImportService.ImportExcel(dlg.FileName);
 
-                    var doc = new DocumentView { Title = title };
-                    foreach (var r in data) doc.Rows.Add(r);
+                    if (res.Rows.Count == 0)
+                    {
+                        MessageBox.Show(
+                            "No se han encontrado filas importables.\n\n" +
+                            "Cabeceras mínimas: MATRICULA, DESTINO, MUELLE, ESTADO.",
+                            "PLMECO", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    var doc = new DocumentView { Title = res.SheetName };
+                    foreach (var r in res.Rows) doc.Rows.Add(r);
                     HookRows(doc);
 
                     _loadingSnapshot = true;
                     Documents.Add(doc);
-                    SelectedIndex = Documents.Count - 1;
+                    SelectedIndex = Documents.Count - 1;  // selecciona la nueva pestaña
                     _loadingSnapshot = false;
 
                     SafeAutosaveNow();
+
+                    MessageBox.Show($"Importado en nueva pestaña desde \"{res.SheetName}\".\n" +
+                                    $"Filas: {res.Rows.Count}.",
+                                    "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
@@ -175,50 +132,20 @@ namespace Plmeco.App
             }
         }
 
-        private void CerrarPestanaActual_Click(object sender, RoutedEventArgs e)
-        {
-            if (Current is null) return;
-            var idx = SelectedIndex;
-            if (idx < 0) return;
-
-            if (MessageBox.Show($"¿Cerrar la pestaña \"{Current.Title}\"?",
-                                "PLMECO", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-                return;
-
-            _loadingSnapshot = true;
-            Documents.RemoveAt(idx);
-            if (Documents.Count == 0)
-            {
-                var doc = new DocumentView { Title = "Reunión 1" };
-                HookRows(doc);
-                Documents.Add(doc);
-                SelectedIndex = 0;
-            }
-            else
-            {
-                SelectedIndex = Math.Min(idx, Documents.Count - 1);
-            }
-            _loadingSnapshot = false;
-
-            SafeAutosaveNow();
-        }
-
+        // === GUARDAR Y GUARDAR COMO ===
         private void Guardar_Click(object sender, RoutedEventArgs e)
         {
-            if (Current is null) return;
-
-            if (string.IsNullOrWhiteSpace(Current.CurrentFile))
-            {
-                GuardarComo_Click(sender, e);
-                return;
-            }
-
+            if (Current == null) return;
             try
             {
-                ExportService.ExportExcel(Current.CurrentFile!, Current.Rows);
-                MessageBox.Show($"Guardado correctamente:\n{Current.CurrentFile}",
-                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
-                SafeAutosaveNow();
+                if (string.IsNullOrWhiteSpace(Current.CurrentFile))
+                    GuardarComo_Click(sender, e);
+                else
+                {
+                    ExportService.ExportToExcel(Current.CurrentFile, Current.Rows);
+                    MessageBox.Show("Guardado correctamente en:\n" + Current.CurrentFile,
+                                    "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -229,57 +156,53 @@ namespace Plmeco.App
 
         private void GuardarComo_Click(object sender, RoutedEventArgs e)
         {
-            if (Current is null) return;
-
-            var dlg = new SaveFileDialog
-            {
-                Filter = "Excel Workbook|*.xlsx",
-                Title = "Guardar pestaña como",
-                FileName = Current.Title.Replace(' ', '_')
-            };
-
-            if (dlg.ShowDialog() == true)
-            {
-                Current.CurrentFile = dlg.FileName;
-                Guardar_Click(sender, e);
-            }
-        }
-
-        private void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
+            if (Current == null) return;
             try
             {
-                if (sender is not DataGrid grid) return;
-                if (grid.CurrentItem is not LoadRow row) return;
-                if (grid.CurrentColumn is not DataGridColumn col) return;
+                var dlg = new SaveFileDialog
+                {
+                    Filter = "Excel Files|*.xlsx",
+                    Title = "Guardar pestaña como..."
+                };
 
-                grid.CommitEdit(DataGridEditingUnit.Cell, true);
-                grid.CommitEdit(DataGridEditingUnit.Row, true);
-                grid.CancelEdit();
-
-                var header = col.Header?.ToString() ?? string.Empty;
-
-                if (header.Equals("LLEGADA REAL", StringComparison.OrdinalIgnoreCase))
-                    row.LlegadaReal = DateTime.Now.TimeOfDay;
-                else if (header.Equals("SALIDA REAL", StringComparison.OrdinalIgnoreCase))
-                    row.SalidaReal = DateTime.Now.TimeOfDay;
-                else
-                    return;
-
-                e.Handled = true;
-                DebouncedAutosave();
+                if (dlg.ShowDialog() == true)
+                {
+                    Current.CurrentFile = dlg.FileName;
+                    ExportService.ExportToExcel(dlg.FileName, Current.Rows);
+                    MessageBox.Show("Guardado como:\n" + dlg.FileName,
+                                    "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al establecer la hora:\n" + ex.Message,
-                                "PLMECO", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Error al guardar como:\n" + ex.Message, "PLMECO",
+                                MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void Salir_Click(object sender, RoutedEventArgs e)
+        // === CERRAR PESTAÑA ===
+        private void CerrarPestana_Click(object sender, RoutedEventArgs e)
         {
-            SafeAutosaveNow();
-            Close();
+            if (Current != null)
+                Documents.Remove(Current);
+        }
+
+        // === AUTOSAVE PARA NO PERDER DATOS ===
+        private void SafeAutosaveNow()
+        {
+            if (_loadingSnapshot) return;
+            try
+            {
+                PersistenceService.SaveSnapshot(Documents.ToList());
+            }
+            catch { /* no interrumpir */ }
+        }
+
+        private void HookRows(DocumentView doc)
+        {
+            doc.Rows.CollectionChanged += (s, e) => SafeAutosaveNow();
+            foreach (var row in doc.Rows)
+                row.PropertyChanged += (s, e) => SafeAutosaveNow();
         }
     }
 }
