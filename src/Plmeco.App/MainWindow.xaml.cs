@@ -32,19 +32,19 @@ namespace Plmeco.App
             InitializeComponent();
             DataContext = this;
 
-            // Restaurar snapshot multi-tab
+            // RESTAURAR
             var snap = PersistenceService.Load();
             _loadingSnapshot = true;
             try
             {
                 if (snap.Documents.Count == 0)
                 {
-                    // pestaña vacía por defecto
                     var doc = new DocumentView { Title = "Reunión 1" };
                     Documents.Add(doc);
                 }
                 else
                 {
+                    // ✅ foreach sobre la colección correcta
                     foreach (var d in snap.Documents)
                     {
                         var doc = new DocumentView { Title = d.Title, CurrentFile = d.CurrentFile };
@@ -57,15 +57,13 @@ namespace Plmeco.App
             }
             finally { _loadingSnapshot = false; }
 
-            // Escuchar cambios para autosave
             foreach (var d in Documents) HookRows(d);
             Documents.CollectionChanged += Documents_CollectionChanged;
 
-            // Crear primer autosave inmediato
             SafeAutosaveNow();
         }
 
-        // === Hooks de cambio ===
+        // ===== hooks cambios =====
         private void HookRows(DocumentView doc)
         {
             doc.Rows.CollectionChanged -= Rows_CollectionChanged;
@@ -76,13 +74,11 @@ namespace Plmeco.App
                 r.PropertyChanged += RowOnPropertyChanged;
             }
         }
-
         private void RowOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (_loadingSnapshot) return;
             DebouncedAutosave();
         }
-
         private void Rows_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (_loadingSnapshot) return;
@@ -94,7 +90,6 @@ namespace Plmeco.App
                 }
             DebouncedAutosave();
         }
-
         private void Documents_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (_loadingSnapshot) return;
@@ -117,12 +112,13 @@ namespace Plmeco.App
                         Rows = d.Rows.ToList()
                     });
                 }
+                // ✅ pasar también SelectedIndex
                 PersistenceService.Save(docs, SelectedIndex);
             }
-            catch { /* silencioso */ }
+            catch { }
         }
 
-        // === Importar en pestaña actual ===
+        // ===== importar / pestañas / guardar (igual que envío anterior) =====
         private void ImportarEnActual_Click(object sender, RoutedEventArgs e)
         {
             if (Current is null) return;
@@ -138,7 +134,7 @@ namespace Plmeco.App
                         Current.Rows.Clear();
                         foreach (var r in data) Current.Rows.Add(r);
                         Current.Title = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
-                        Current.CurrentFile = null; // evitar sobrescribir algo anterior por error
+                        Current.CurrentFile = null;
                     }
                     finally { _loadingSnapshot = false; }
                     SafeAutosaveNow();
@@ -150,7 +146,6 @@ namespace Plmeco.App
             }
         }
 
-        // === Nueva pestaña desde Excel (importa a una pestaña nueva) ===
         private void NuevaPestanaDesdeExcel_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -180,7 +175,6 @@ namespace Plmeco.App
             }
         }
 
-        // === Cerrar pestaña actual ===
         private void CerrarPestanaActual_Click(object sender, RoutedEventArgs e)
         {
             if (Current is null) return;
@@ -209,7 +203,6 @@ namespace Plmeco.App
             SafeAutosaveNow();
         }
 
-        // === Guardar / Guardar como (por pestaña) ===
         private void Guardar_Click(object sender, RoutedEventArgs e)
         {
             if (Current is null) return;
@@ -252,7 +245,6 @@ namespace Plmeco.App
             }
         }
 
-        // === Doble clic horas (funciona en cada DataGrid gracias al EventSetter del estilo) ===
         private void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             try
