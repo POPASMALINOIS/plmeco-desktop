@@ -34,6 +34,14 @@ namespace Plmeco.App
         }
 
         public DocumentView Current => (DocumentView)TabControlDocs.SelectedItem;
+        private void CerrarPestanaActual_Click(object sender, RoutedEventArgs e)
+        {
+            if (Current != null)
+            {
+                Documents.Remove(Current);
+            }
+        }
+
 
         // ===================== IMPORTAR EN PESTAÑA ACTUAL =====================
         private void ImportarEnActual_Click(object sender, RoutedEventArgs e)
