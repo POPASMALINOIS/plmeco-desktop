@@ -9,12 +9,20 @@ namespace Plmeco.App.Services
 {
     public static class ImportService
     {
-        public sealed class ImportResult
+        public class ImportResult
         {
-            public string SheetName { get; init; } = "Hoja";
-            public int HeaderRow { get; init; }
-            public List<LoadRow> Rows { get; init; } = new();
-            public Dictionary<string,int> Map { get; init; } = new();
+            public string SheetName { get; set; }
+            public int HeaderRow { get; set; }
+            public List<LoadRow> Rows { get; set; }
+            public Dictionary<string, int> Map { get; set; }
+
+            public ImportResult()
+            {
+                SheetName = "Hoja";
+                HeaderRow = 0;
+                Rows = new List<LoadRow>();
+                Map = new Dictionary<string, int>();
+            }
         }
 
         private static readonly Dictionary<string, string[]> Syns = new()
@@ -35,9 +43,11 @@ namespace Plmeco.App.Services
 
         public static ImportResult ImportExcel(string path)
         {
+            var result = new ImportResult();
+
             using var wb = new XLWorkbook(path);
 
-            IXLWorksheet? bestWs = null;
+            IXLWorksheet bestWs = null;
             int bestHits = -1;
             int bestHeaderRow = 1;
             Dictionary<string,int> bestMap = new();
@@ -54,9 +64,8 @@ namespace Plmeco.App.Services
                 }
             }
 
-            var result = new ImportResult();
             if (bestWs == null || !HasMinimum(bestMap))
-                return result; // vacío (UI avisará)
+                return result; // vacío: UI avisará
 
             result.SheetName = bestWs.Name;
             result.HeaderRow = bestHeaderRow;
