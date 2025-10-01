@@ -7,7 +7,7 @@
         Height="600"
         Width="1100">
 
-    <!-- Recursos (idénticos a tu versión anterior) -->
+    <!-- (recursos tal como ya los tenías, sin cambios) -->
     <Window.Resources>
         <conv:TimeSpanConverter x:Key="TsConv"/>
         <conv:EqualsIgnoreCaseConverter x:Key="EqI"/>
@@ -102,17 +102,10 @@
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
 
-        <!-- Estilo para DataGrid de cada pestaña con doble clic -->
         <Style x:Key="GridWithDoubleClick" TargetType="DataGrid">
             <EventSetter Event="MouseDoubleClick" Handler="DataGrid_MouseDoubleClick"/>
         </Style>
     </Window.Resources>
-
-    <!-- Atajos -->
-    <Window.InputBindings>
-        <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}"/>
-        <KeyBinding Key="S" Modifiers="Control+Shift" Command="{x:Static ApplicationCommands.SaveAs}"/>
-    </Window.InputBindings>
 
     <Grid>
         <DockPanel>
@@ -131,8 +124,13 @@
                 </MenuItem>
             </Menu>
 
-            <!-- Barra rápida -->
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5" Spacing="6">
+            <!-- Barra rápida (sin Spacing; usamos Margin por estilo) -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5">
+                <StackPanel.Resources>
+                    <Style TargetType="Button">
+                        <Setter Property="Margin" Value="0,0,6,0"/>
+                    </Style>
+                </StackPanel.Resources>
                 <Button Content="Nueva pestaña desde Excel..." Click="NuevaPestanaDesdeExcel_Click"/>
                 <Button Content="Importar en pestaña actual..." Click="ImportarEnActual_Click"/>
                 <Button Content="Guardar (pestaña)" Click="Guardar_Click"/>
@@ -140,7 +138,7 @@
                 <Button Content="Cerrar pestaña" Click="CerrarPestanaActual_Click"/>
             </StackPanel>
 
-            <!-- TABS -->
+            <!-- TABS (igual que tenías) -->
             <TabControl x:Name="tabControl"
                         ItemsSource="{Binding Documents}"
                         SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}">
@@ -152,7 +150,6 @@
 
                 <TabControl.ContentTemplate>
                     <DataTemplate>
-                        <!-- DataGrid de la pestaña (Rows del DocumentView) -->
                         <DataGrid Style="{StaticResource GridWithDoubleClick}"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
