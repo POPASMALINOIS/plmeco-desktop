@@ -9,9 +9,17 @@
 
     <!-- Recursos -->
     <Window.Resources>
+        <!-- Convertidores -->
         <conv:TimeSpanConverter x:Key="TsConv"/>
         <conv:EqualsIgnoreCaseConverter x:Key="EqI"/>
         <conv:NotEmptyConverter x:Key="NotEmpty"/>
+
+        <!-- Opciones del desplegable ESTADO -->
+        <x:Array Type="{x:Type sys:String}" x:Key="EstadoOptions">
+            <sys:String>CARGANDO</sys:String>
+            <sys:String>OK</sys:String>
+            <sys:String>ANULADO</sys:String>
+        </x:Array>
 
         <!-- Paleta -->
         <SolidColorBrush x:Key="RowGreen"   Color="#DFF6DD"/>
@@ -20,12 +28,13 @@
         <SolidColorBrush x:Key="CellOrange" Color="#FFE5B4"/>
         <SolidColorBrush x:Key="TextDarkRed" Color="#7A0010"/>
 
-        <!-- Texto negro por defecto (contenido de celdas) -->
+        <!-- Texto negro y en negrita por defecto en contenido de celdas -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
         </Style>
 
-        <!-- 🔒 Texto negro también cuando la celda está seleccionada -->
+        <!-- Forzar texto negro también cuando la celda está seleccionada -->
         <Style TargetType="DataGridCell">
             <Setter Property="Foreground" Value="Black"/>
             <Style.Triggers>
@@ -35,65 +44,75 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Fila: LEX => verde; CAMION ANULADO => rojo -->
+        <!-- Fila: LEX => verde; ANULADO => rojo (tiene prioridad) -->
         <Style x:Key="CargasRowStyle" TargetType="DataGridRow">
             <Setter Property="Background" Value="{x:Null}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="Black"/>
             <Style.Triggers>
-                <!-- LEX marcado: fila verde -->
+                <!-- Fila verde si LEX -->
                 <DataTrigger Binding="{Binding Lex}" Value="True">
                     <Setter Property="Background" Value="{StaticResource RowGreen}"/>
-                    <Setter Property="FontWeight" Value="Normal"/>
+                    <Setter Property="Foreground" Value="Black"/>
                 </DataTrigger>
 
-                <!-- CAMION ANULADO: fila roja + texto granate -->
+                <!-- Fila roja si ESTADO = ANULADO (case-insensitive) -->
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
-                        <Binding Path="Estado" Converter="{StaticResource EqI}" ConverterParameter="CAMION ANULADO"/>
+                        <Binding Path="Estado" Converter="{StaticResource EqI}" ConverterParameter="ANULADO"/>
                     </DataTrigger.Binding>
                     <Setter Property="Background" Value="{StaticResource RowRed}"/>
                     <Setter Property="Foreground" Value="{StaticResource TextDarkRed}"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
 
         <!-- DESTINO verde si ESTADO = OK (case-insensitive) -->
         <Style x:Key="DestinoCellStyle" TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Style.Triggers>
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
                         <Binding Path="Estado" Converter="{StaticResource EqI}" ConverterParameter="OK"/>
                     </DataTrigger.Binding>
                     <Setter Property="Background" Value="{StaticResource CellGreen}"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
 
         <!-- ESTADO naranja si CARGANDO (case-insensitive) -->
         <Style x:Key="EstadoCellStyle" TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Style.Triggers>
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
                         <Binding Path="Estado" Converter="{StaticResource EqI}" ConverterParameter="CARGANDO"/>
                     </DataTrigger.Binding>
                     <Setter Property="Background" Value="{StaticResource CellOrange}"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
 
         <!-- INCIDENCIAS naranja si NO vacío -->
         <Style x:Key="IncidenciasCellStyle" TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Style.Triggers>
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
                         <Binding Path="Incidencias" Converter="{StaticResource NotEmpty}"/>
                     </DataTrigger.Binding>
                     <Setter Property="Background" Value="{StaticResource CellOrange}"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
                 </DataTrigger>
             </Style.Triggers>
+        </Style>
+
+        <!-- ElementStyle reutilizable -->
+        <Style x:Key="BlackBoldTextBlock" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
         </Style>
     </Window.Resources>
 
@@ -128,29 +147,77 @@
                       Foreground="Black">
 
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="MATRICULA" Binding="{Binding Matricula}" Width="*"/>
-                    <DataGridTextColumn Header="DESTINO"   Binding="{Binding Destino}"  Width="*"
-                                        CellStyle="{StaticResource DestinoCellStyle}"/>
-                    <DataGridTextColumn Header="MUELLE"    Binding="{Binding Muelle}"   Width="0.6*"/>
-                    <DataGridTextColumn Header="ESTADO"    Binding="{Binding Estado}"   Width="0.6*"
-                                        CellStyle="{StaticResource EstadoCellStyle}"/>
+                    <DataGridTextColumn Header="MATRICULA" Binding="{Binding Matricula}" Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
-                    <!-- Horas (editables) -->
+                    <DataGridTextColumn Header="DESTINO" Binding="{Binding Destino}" Width="*"
+                                        CellStyle="{StaticResource DestinoCellStyle}">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="MUELLE" Binding="{Binding Muelle}" Width="0.6*">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- ESTADO: plantilla con TextBlock y edición con ComboBox (editable) -->
+                    <DataGridTemplateColumn Header="ESTADO" CellStyle="{StaticResource EstadoCellStyle}" Width="0.8*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Estado}" FontWeight="Bold" Foreground="Black"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox
+                                    IsEditable="True"
+                                    Text="{Binding Estado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    ItemsSource="{Binding Source={StaticResource EstadoOptions}}"
+                                    Foreground="Black"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Horas (editables con convertidor) -->
                     <DataGridTextColumn Header="LLEGADA REAL"
                         Binding="{Binding LlegadaReal, Converter={StaticResource TsConv}, UpdateSourceTrigger=LostFocus}"
-                        Width="0.8*"/>
+                        Width="0.8*">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
                     <DataGridTextColumn Header="SALIDA REAL"
                         Binding="{Binding SalidaReal, Converter={StaticResource TsConv}, UpdateSourceTrigger=LostFocus}"
-                        Width="0.8*"/>
+                        Width="0.8*">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
                     <DataGridTextColumn Header="SALIDA TOPE"
                         Binding="{Binding SalidaTope, Converter={StaticResource TsConv}}"
-                        IsReadOnly="True" Width="0.8*"/>
+                        IsReadOnly="True" Width="0.8*">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Incidencias -->
                     <DataGridTextColumn Header="INCIDENCIAS"
                                         Binding="{Binding Incidencias}"
                                         CellStyle="{StaticResource IncidenciasCellStyle}"
-                                        Width="*"/>
+                                        Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <StaticResource ResourceKey="BlackBoldTextBlock"/>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <DataGridCheckBoxColumn Header="LEX" Binding="{Binding Lex}" Width="0.5*"/>
                 </DataGrid.Columns>
