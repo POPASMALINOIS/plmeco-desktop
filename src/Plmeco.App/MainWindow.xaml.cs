@@ -4,10 +4,11 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using PLMECO.App.Models;
-using PLMECO.App.Services;
+// 👇 NAMESPACES CORRECTOS (respeta mayúsculas/minúsculas del proyecto)
+using Plmeco.App.Models;
+using Plmeco.App.Services;
 
-namespace PLMECO.App
+namespace Plmeco.App
 {
     public partial class MainWindow : Window
     {
@@ -19,13 +20,13 @@ namespace PLMECO.App
             InitializeComponent();
             DataContext = this;
 
-            // Crear pestaña vacía inicial
+            // Pestaña inicial vacía
             var doc = new DocumentView { Title = "Hoja 1" };
             Documents.Add(doc);
             HookRows(doc);
         }
 
-        // === PROPIEDADES DE AYUDA ===
+        // --- Ayuda para pestaña actual (usa el TabControl con Name=TabControlDocs en XAML) ---
         public int SelectedIndex
         {
             get => TabControlDocs.SelectedIndex;
@@ -34,7 +35,7 @@ namespace PLMECO.App
 
         public DocumentView Current => (DocumentView)TabControlDocs.SelectedItem;
 
-        // === IMPORTAR EN PESTAÑA ACTUAL ===
+        // ===================== IMPORTAR EN PESTAÑA ACTUAL =====================
         private void ImportarEnActual_Click(object sender, RoutedEventArgs e)
         {
             if (Current == null) return;
@@ -64,8 +65,8 @@ namespace PLMECO.App
                     try
                     {
                         Current.Rows.Clear();
-                        foreach (var r in res.Rows) Current.Rows.Add(r);
-                        Current.Title = res.SheetName;     // nombre real de la hoja
+                        foreach (var r in res.Rows) Current.Rows.Add(r);   // <-- res.Rows
+                        Current.Title = res.SheetName;                      // nombre real de la hoja
                         Current.CurrentFile = null;
                         HookRows(Current);
                     }
@@ -85,7 +86,7 @@ namespace PLMECO.App
             }
         }
 
-        // === IMPORTAR EN NUEVA PESTAÑA ===
+        // ===================== IMPORTAR EN NUEVA PESTAÑA =====================
         private void NuevaPestanaDesdeExcel_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -110,7 +111,7 @@ namespace PLMECO.App
                     }
 
                     var doc = new DocumentView { Title = res.SheetName };
-                    foreach (var r in res.Rows) doc.Rows.Add(r);
+                    foreach (var r in res.Rows) doc.Rows.Add(r);            // <-- res.Rows
                     HookRows(doc);
 
                     _loadingSnapshot = true;
@@ -132,7 +133,7 @@ namespace PLMECO.App
             }
         }
 
-        // === GUARDAR Y GUARDAR COMO ===
+        // ===================== GUARDAR =====================
         private void Guardar_Click(object sender, RoutedEventArgs e)
         {
             if (Current == null) return;
@@ -142,7 +143,8 @@ namespace PLMECO.App
                     GuardarComo_Click(sender, e);
                 else
                 {
-                    ExportService.ExportToExcel(Current.CurrentFile, Current.Rows);
+                    // Usa el nombre de método que tengas en tu ExportService (ExportExcel o ExportToExcel)
+                    ExportService.ExportExcel(Current.CurrentFile, Current.Rows);
                     MessageBox.Show("Guardado correctamente en:\n" + Current.CurrentFile,
                                     "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -168,7 +170,7 @@ namespace PLMECO.App
                 if (dlg.ShowDialog() == true)
                 {
                     Current.CurrentFile = dlg.FileName;
-                    ExportService.ExportToExcel(dlg.FileName, Current.Rows);
+                    ExportService.ExportExcel(dlg.FileName, Current.Rows);
                     MessageBox.Show("Guardado como:\n" + dlg.FileName,
                                     "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -180,14 +182,13 @@ namespace PLMECO.App
             }
         }
 
-        // === CERRAR PESTAÑA ===
         private void CerrarPestana_Click(object sender, RoutedEventArgs e)
         {
             if (Current != null)
                 Documents.Remove(Current);
         }
 
-        // === AUTOSAVE PARA NO PERDER DATOS ===
+        // ===================== AUTOGUARDADO =====================
         private void SafeAutosaveNow()
         {
             if (_loadingSnapshot) return;
@@ -195,7 +196,7 @@ namespace PLMECO.App
             {
                 PersistenceService.SaveSnapshot(Documents.ToList());
             }
-            catch { /* no interrumpir */ }
+            catch { /* evitar romper flujo por autosave */ }
         }
 
         private void HookRows(DocumentView doc)
