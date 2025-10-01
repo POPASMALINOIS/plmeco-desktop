@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-// 👇 NAMESPACES CORRECTOS (respeta mayúsculas/minúsculas del proyecto)
 using Plmeco.App.Models;
 using Plmeco.App.Services;
 
@@ -20,13 +19,13 @@ namespace Plmeco.App
             InitializeComponent();
             DataContext = this;
 
-            // Pestaña inicial vacía
+            // Crear pestaña vacía inicial
             var doc = new DocumentView { Title = "Hoja 1" };
             Documents.Add(doc);
             HookRows(doc);
         }
 
-        // --- Ayuda para pestaña actual (usa el TabControl con Name=TabControlDocs en XAML) ---
+        // Ayuda para trabajar con el TabControl
         public int SelectedIndex
         {
             get => TabControlDocs.SelectedIndex;
@@ -34,14 +33,6 @@ namespace Plmeco.App
         }
 
         public DocumentView Current => (DocumentView)TabControlDocs.SelectedItem;
-        private void CerrarPestanaActual_Click(object sender, RoutedEventArgs e)
-        {
-            if (Current != null)
-            {
-                Documents.Remove(Current);
-            }
-        }
-
 
         // ===================== IMPORTAR EN PESTAÑA ACTUAL =====================
         private void ImportarEnActual_Click(object sender, RoutedEventArgs e)
@@ -73,8 +64,8 @@ namespace Plmeco.App
                     try
                     {
                         Current.Rows.Clear();
-                        foreach (var r in res.Rows) Current.Rows.Add(r);   // <-- res.Rows
-                        Current.Title = res.SheetName;                      // nombre real de la hoja
+                        foreach (var r in res.Rows) Current.Rows.Add(r);
+                        Current.Title = res.SheetName;        // Nombre real de la hoja
                         Current.CurrentFile = null;
                         HookRows(Current);
                     }
@@ -119,12 +110,12 @@ namespace Plmeco.App
                     }
 
                     var doc = new DocumentView { Title = res.SheetName };
-                    foreach (var r in res.Rows) doc.Rows.Add(r);            // <-- res.Rows
+                    foreach (var r in res.Rows) doc.Rows.Add(r);
                     HookRows(doc);
 
                     _loadingSnapshot = true;
                     Documents.Add(doc);
-                    SelectedIndex = Documents.Count - 1;  // selecciona la nueva pestaña
+                    SelectedIndex = Documents.Count - 1;  // Selecciona la nueva pestaña
                     _loadingSnapshot = false;
 
                     SafeAutosaveNow();
@@ -151,7 +142,6 @@ namespace Plmeco.App
                     GuardarComo_Click(sender, e);
                 else
                 {
-                    // Usa el nombre de método que tengas en tu ExportService (ExportExcel o ExportToExcel)
                     ExportService.ExportExcel(Current.CurrentFile, Current.Rows);
                     MessageBox.Show("Guardado correctamente en:\n" + Current.CurrentFile,
                                     "PLMECO", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -190,10 +180,13 @@ namespace Plmeco.App
             }
         }
 
-        private void CerrarPestana_Click(object sender, RoutedEventArgs e)
+        // ===================== CERRAR PESTAÑA =====================
+        private void CerrarPestanaActual_Click(object sender, RoutedEventArgs e)
         {
             if (Current != null)
+            {
                 Documents.Remove(Current);
+            }
         }
 
         // ===================== AUTOGUARDADO =====================
@@ -204,7 +197,10 @@ namespace Plmeco.App
             {
                 PersistenceService.SaveSnapshot(Documents.ToList());
             }
-            catch { /* evitar romper flujo por autosave */ }
+            catch
+            {
+                // Silencio: no debe interrumpir el flujo de trabajo
+            }
         }
 
         private void HookRows(DocumentView doc)
